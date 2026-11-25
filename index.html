@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Newton-Raphson Method | Differential Project</title>
+  <script src="https://cdn.jsdelivr.net/npm/mathjs@14.8.1/lib/browser/math.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #667085;
+      --primary: #3157d5;
+      --primary-dark: #2444b2;
+      --border: #e3e8f2;
+      --success: #087443;
+      --danger: #b42318;
+      --shadow: 0 12px 35px rgba(28, 43, 84, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      line-height: 1.6;
+    }
+    .container { width: min(1050px, 92%); margin: 38px auto; }
+    header { text-align: center; margin-bottom: 26px; }
+    h1 { margin: 0 0 7px; font-size: clamp(25px, 4vw, 36px); }
+    header p { margin: 0; color: var(--muted); }
+    .formula {
+      direction: ltr; text-align: center; font-size: 19px; font-weight: 600;
+      background: #edf1ff; color: #203f9f; border-radius: 12px;
+      padding: 12px; margin-top: 18px;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 22px; margin-bottom: 18px;
+      box-shadow: var(--shadow);
+    }
+    .inputs {
+      display: grid; grid-template-columns: 2fr 1fr auto;
+      gap: 14px; align-items: end;
+    }
+    label { display: block; font-weight: 650; margin-bottom: 7px; }
+    input {
+      width: 100%; padding: 12px 13px; border: 1px solid #cbd3e1;
+      border-radius: 9px; font-size: 16px; direction: ltr; text-align: left;
+      outline: none;
+    }
+    input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px #3157d51a; }
+    button {
+      border: 0; border-radius: 9px; padding: 12px 24px;
+      background: var(--primary); color: white; font-size: 16px;
+      font-weight: 700; cursor: pointer; min-height: 47px;
+    }
+    button:hover { background: var(--primary-dark); }
+    .hint { color: var(--muted); font-size: 13px; margin: 7px 0 0; }
+    #message { margin-top: 15px; padding: 10px 13px; border-radius: 9px; display: none; }
+    #message.success { display: block; background: #eaf7ef; color: var(--success); }
+    #message.error { display: block; background: #fff0ef; color: var(--danger); }
+    .summary {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    }
+    .metric { background: #f8f9fd; border: 1px solid var(--border); border-radius: 11px; padding: 14px; }
+    .metric span { display: block; color: var(--muted); font-size: 13px; }
+    .metric strong { display: block; direction: ltr; text-align: right; overflow-wrap: anywhere; font-size: 20px; margin-top: 3px; }
+    h2 { margin: 0 0 14px; font-size: 20px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; direction: ltr; text-align: center; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    th { background: #f5f7fc; font-weight: 700; }
+    td { font-variant-numeric: tabular-nums; }
+    .chart-wrap { position: relative; height: 390px; direction: ltr; }
+    footer { text-align: center; color: var(--muted); font-size: 12px; margin: 22px 0 35px; }
+    @media (max-width: 720px) {
+      .inputs { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: 1fr; }
+      .chart-wrap { height: 310px; }
+      .card { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>حل المعادلات غير الخطية</h1>
+      <p>Newton-Raphson Method — Differential Project</p>
+      <div class="formula">xₙ₊₁ = xₙ − f(xₙ) / f′(xₙ)</div>
+    </header>
+
+    <section class="card">
+      <div class="inputs">
+        <div>
+          <label for="functionInput">الدالة f(x)</label>
+          <input id="functionInput" type="text" value="x^4 - 11*x + 8" placeholder="مثال: x^4 - 11*x + 8" autocomplete="off">
+          <p class="hint">اكتب الضرب صراحةً باستخدام *، والأس استخدم ^. مثال: x^2 + 3*x - 4</p>
+        </div>
+        <div>
+          <label for="x0Input">قيمة البداية X₀</label>
+          <input id="x0Input" type="number" value="2" step="any">
+        </div>
+        <button id="runButton" type="button">Run</button>
+      </div>
+      <div id="message" role="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>النتيجة</h2>
+      <div class="summary">
+        <div class="metric"><span>الجذر التقريبي</span><strong id="rootValue">—</strong></div>
+        <div class="metric"><span>عدد التكرارات</span><strong id="iterationCount">—</strong></div>
+        <div class="metric"><span>قيمة |f(x)| عند النتيجة</span><strong id="residualValue">—</strong></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>جدول التكرارات</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Iteration (n)</th><th>xₙ</th><th>f(xₙ)</th></tr></thead>
+          <tbody id="resultsBody">
+            <tr><td colspan="3">أدخل الدالة وقيمة البداية ثم اضغط Run</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>الرسم البياني ونقاط التكرار</h2>
+      <div class="chart-wrap"><canvas id="functionChart"></canvas></div>
+    </section>
+
+    <footer>Newton-Raphson Method | Tolerance = 0.0001 | Maximum iterations = 100</footer>
+  </main>
+
+  <script>
+    const tolerance = 0.0001;
+    const maxIterations = 100;
+    const functionInput = document.getElementById("functionInput");
+    const x0Input = document.getElementById("x0Input");
+    const message = document.getElementById("message");
+    const resultsBody = document.getElementById("resultsBody");
+    const rootValue = document.getElementById("rootValue");
+    const iterationCount = document.getElementById("iterationCount");
+    const residualValue = document.getElementById("residualValue");
+    let chart = null;
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = type;
+    }
+
+    function formatNumber(value) {
+      if (!Number.isFinite(value)) return "غير معرّف";
+      return Number(value).toPrecision(10).replace(/\.?0+$/, "");
+    }
+
+    function runNewtonRaphson() {
+      try {
+        if (typeof math === "undefined" || typeof Chart === "undefined") {
+          throw new Error("تعذر تحميل مكتبات الحساب أو الرسم. تأكد من اتصال الإنترنت ثم أعد تحميل الصفحة.");
+        }
+
+        const expression = functionInput.value.trim().replace(/\*\*/g, "^");
+        const x0 = Number(x0Input.value);
+
+        if (!expression) throw new Error("من فضلك اكتب الدالة f(x).");
+        if (x0Input.value.trim() === "" || !Number.isFinite(x0)) {
+          throw new Error("من فضلك أدخل قيمة بداية صحيحة لـ X₀.");
+        }
+
+        const parsedFunction = math.parse(expression);
+        const parsedDerivative = math.derivative(parsedFunction, "x");
+        const compiledFunction = parsedFunction.compile();
+        const compiledDerivative = parsedDerivative.compile();
+
+        const f = value => Number(compiledFunction.evaluate({ x: value }));
+        const df = value => Number(compiledDerivative.evaluate({ x: value }));
+
+        const initialFx = f(x0);
+        if (!Number.isFinite(initialFx)) {
+          throw new Error("الدالة غير معرّفة عند قيمة X₀. راجع الدالة أو قيمة البداية.");
+        }
+
+        const points = [{ n: 0, x: x0, fx: initialFx }];
+        let current = x0;
+        let converged = Math.abs(initialFx) < tolerance;
+        let stopReason = "";
+
+        for (let i = 1; i <= maxIterations && !converged; i++) {
+          const derivative = df(current);
+
+          if (!Number.isFinite(derivative) || Math.abs(derivative) < 1e-12) {
+            stopReason = "توقفت العملية لأن المشتقة تساوي صفرًا أو غير معرّفة عند إحدى الخطوات.";
+            break;
+          }
+
+          const next = current - f(current) / derivative;
+          if (!Number.isFinite(next)) {
+            stopReason = "توقفت العملية لأن قيمة التكرار أصبحت غير صالحة.";
+            break;
+          }
+
+          const nextFx = f(next);
+          if (!Number.isFinite(nextFx)) {
+            stopReason = "توقفت العملية لأن الدالة غير معرّفة عند إحدى قيم التكرار.";
+            break;
+          }
+
+          points.push({ n: i, x: next, fx: nextFx });
+          if (Math.abs(next - current) < tolerance) {
+            converged = true;
+            break;
+          }
+          current = next;
+        }
+
+        resultsBody.innerHTML = "";
+        for (const point of points) {
+          const row = document.createElement("tr");
+          [point.n, formatNumber(point.x), formatNumber(point.fx)].forEach(value => {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            row.appendChild(cell);
+          });
+          resultsBody.appendChild(row);
+        }
+
+        const last = points[points.length - 1];
+        rootValue.textContent = formatNumber(last.x);
+        iterationCount.textContent = String(points.length - 1);
+        residualValue.textContent = formatNumber(Math.abs(last.fx));
+
+        if (converged) {
+          showMessage("تم الوصول إلى نتيجة مستقرة حسب شرط التوقف |xₙ₊₁ − xₙ| < 0.0001.", "success");
+        } else if (stopReason) {
+          showMessage(stopReason, "error");
+        } else {
+          showMessage("لم يحدث تقارب خلال 100 تكرار. جرّب قيمة بداية مختلفة.", "error");
+        }
+
+        drawChart(f, points);
+      } catch (error) {
+        showMessage(error.message || "حدث خطأ أثناء الحساب. راجع صيغة الدالة.", "error");
+      }
+    }
+
+    function drawChart(f, points) {
+      const xs = points.map(point => point.x);
+      let minX = Math.min(...xs);
+      let maxX = Math.max(...xs);
+      let span = maxX - minX;
+      if (!Number.isFinite(span) || span === 0) span = Math.max(1, Math.abs(minX) * 0.2);
+      const margin = Math.max(span * 0.25, 0.5);
+      const start = minX - margin;
+      const end = maxX + margin;
+      const curve = [];
+
+      for (let i = 0; i <= 400; i++) {
+        const x = start + (end - start) * i / 400;
+        let y = null;
+        try {
+          const value = f(x);
+          if (Number.isFinite(value)) y = value;
+        } catch (_) {}
+        curve.push({ x, y });
+      }
+
+      const iterationPoints = points.map(point => ({ x: point.x, y: point.fx }));
+      if (chart) chart.destroy();
+
+      chart = new Chart(document.getElementById("functionChart"), {
+        type: "scatter",
+        data: {
+          datasets: [
+            {
+              label: "f(x)",
+              data: curve,
+              showLine: true,
+              borderColor: "#3157d5",
+              borderWidth: 2,
+              pointRadius: 0,
+              spanGaps: false
+            },
+            {
+              label: "Iteration points",
+              data: iterationPoints,
+              showLine: true,
+              borderColor: "#e05252",
+              backgroundColor: "#e05252",
+              borderWidth: 1.5,
+              pointRadius: 5,
+              pointHoverRadius: 7
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          parsing: false,
+          interaction: { mode: "nearest", intersect: false },
+          plugins: {
+            legend: { position: "top" },
+            tooltip: {
+              callbacks: {
+                label: context => `x: ${formatNumber(context.parsed.x)}, y: ${formatNumber(context.parsed.y)}`
+              }
+            }
+          },
+          scales: {
+            x: { type: "linear", title: { display: true, text: "x" } },
+            y: { type: "linear", title: { display: true, text: "f(x)" } }
+          }
+        }
+      });
+    }
+
+    document.getElementById("runButton").addEventListener("click", runNewtonRaphson);
+    functionInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") runNewtonRaphson();
+    });
+    x0Input.addEventListener("keydown", event => {
+      if (event.key === "Enter") runNewtonRaphson();
+    });
+
+    runNewtonRaphson();
+  </script>
+</body>
+</html>
